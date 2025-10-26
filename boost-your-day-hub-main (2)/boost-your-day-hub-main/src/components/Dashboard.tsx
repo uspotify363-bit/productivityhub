@@ -40,57 +40,23 @@ const Dashboard = ({ user, onLogout, activeModule, setActiveModule }: DashboardP
       const today = new Date().toISOString().split("T")[0];
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const { data: StatsData } = await supabase
+      .from("user_stats")
+      .select("focus_time, pomodoro_sessions, tasks_completed, efficiency_score")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .maybeSingle();
 
-      // Fetch pomodoro sessions
-      const { data, error } = await supabase
-        .from("pomodoro_sessions")
-        .select("duration, mode, completed, started_at, task_name")
-        .eq("user_id", user.id)
-        .gte("started_at", `${today}T00:00:00`)
-        .lte("started_at", `${today}T23:59:59`);
-
-      if (error) throw error;
-
-      // Fetch user stats for tasks completed in calendar
-      const { data: statsData } = await supabase
-        .from("user_stats")
-        .select("tasks_completed")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .maybeSingle();
-
-      // ✅ Only completed work sessions
-      const workSessions = data.filter((s) => s.mode === "work" && s.completed);
-      const totalSeconds = workSessions.reduce(
-        (acc, s) => acc + (s.duration || 0),
-        0
-      );
-
-      // ✅ Correct time formatting (in hours/minutes)
-      const totalMinutes = Math.floor(totalSeconds / 60);
-      const hours = Math.floor(totalMinutes / 60);
+  
       const minutes = totalMinutes % 60;
-      const formattedFocusTime =
-        hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-
-      // ✅ Completed Pomodoros (work sessions)
-      const totalPomodoros = workSessions.length;
-
-      // ✅ Combine pomodoro tasks + calendar tasks
-      const pomodoroTasksCount = [
-        ...new Set(workSessions.map((s) => s.task_name || "Untitled Task")),
-      ].length;
-      const calendarTasksCount = statsData?.tasks_completed || 0;
-      const totalTasks = pomodoroTasksCount + calendarTasksCount;
-
-      // ✅ Efficiency = ratio of completed work sessions
-      const efficiency = data.length
-        ? Math.round((totalPomodoros / data.length) * 100)
-        : 0;
+      const formatted Focus Time = hours > 0 ? '${hours}h ${minutes}m' : `${minutes}m';
+const completedPomodoros = statsData?.pomodoro_sessions || 0;
+const totalTasks = statsData?.tasks_completed || 0;
+const efficiency = statsData?.efficiency_score || 0;
 
       setStats({
         focusTime: formattedFocusTime,
-        completedPomodoros: totalPomodoros,
+        completedPomodoros,
         totalTasks,
         efficiency,
       });
