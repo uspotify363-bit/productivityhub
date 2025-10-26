@@ -130,7 +130,6 @@ const TimeTracker = () => {
     await handleTimerEnd(true);
   };
 
-  // ✅ Исправленный handleTimerEnd с корректным обновлением user_stats
   const handleTimerEnd = async (manualComplete = false) => {
     setIsRunning(false);
 
@@ -142,33 +141,30 @@ const TimeTracker = () => {
         .from("pomodoro_sessions")
         .update({
           completed: true,
-          ended_at: new Date().toISOString(),
+         completed_at: new Date().toISOString(), 
         })
         .eq("id", currentSessionId);
     }
 
     // ✅ если это рабочая сессия — добавляем время в user_stats
     if (!isBreak) {
-      const focusMinutes = Math.round(
-        (manualComplete ? WORK_DURATION - timeLeft : WORK_DURATION) / 60
-      );
+     const actualDuration = manualComplete? WORK_DURATION - timeLeft: WORK_DURATION;
+     const focusMinutes = Math.round(actualDuration / 60);
 
       const today = new Date().toISOString().split("T")[0];
       const { data: existingStats } = await supabase
         .from("user_stats")
-        .select("id, focus_time, tasks_completed")
+        .select("id, focus_time, tasks_completed, pomodoro_sessions")
         .eq("user_id", user.id)
         .eq("date", today)
         .maybeSingle();
 
       if (existingStats) {
-        const newFocus = existingStats.focus_time + focusMinutes;
-        const newTasks = existingStats.tasks_completed + 1;
         await supabase
           .from("user_stats")
           .update({
-            focus_time: newFocus,
-            tasks_completed: newTasks,
+            focus_time: existingStats.focus_time + focus_Minutes,
+            pomodoro_sessions: existingStats.pomodoro_sessions + 1,
           })
           .eq("id", existingStats.id);
       } else {
@@ -176,7 +172,8 @@ const TimeTracker = () => {
           {
             user_id: user.id,
             focus_time: focusMinutes,
-            tasks_completed: 1,
+            pomodoro_sessions 1,
+            tasks_completed 0,
             efficiency_score: 100,
             date: today,
           },
