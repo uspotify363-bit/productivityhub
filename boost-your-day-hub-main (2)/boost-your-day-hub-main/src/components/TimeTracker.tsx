@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { updateDailyEfficiency } from "@/lib/efficiency";
 
 const WORK_DURATION = 25 * 60; // 25 minutes
 const SHORT_BREAK = 5 * 60; // 5 minutes
@@ -174,11 +175,12 @@ const TimeTracker = () => {
             focus_time: focusMinutes,
             pomodoro_sessions 1,
             tasks_completed 0,
-            efficiency_score: 100,
+            efficiency_score: 0,
             date: today,
           },
         ]);
       }
+      await updateDailyEfficiency( supabase, user.id);
     }
 
     if (isBreak) {
