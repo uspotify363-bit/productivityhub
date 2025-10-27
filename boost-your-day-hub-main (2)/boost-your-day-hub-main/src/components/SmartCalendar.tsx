@@ -198,6 +198,7 @@ const SmartCalendar: React.FC = () => {
                 tasks_completed: 1
               });
           }
+          await updateDailyEfficiency(supabase, user.id, 1);
         }
       }
       
