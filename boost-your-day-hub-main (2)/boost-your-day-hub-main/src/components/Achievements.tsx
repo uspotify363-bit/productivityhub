@@ -263,42 +263,55 @@ const Achievements = () => {
       setAchievements(allAchievements);
 
       // Award points and update level
-      await updatePointsAndLevel(totalPomodoros, totalTasks, currentStreak);
+      await updatePointsAndLevel ( user.id, allAchievements, userAchievements || []);
     } catch (error) {
       console.error('Error fetching achievements:', error);
     }
   };
 
-  const updatePointsAndLevel = async (pomodoros: number, tasks: number, streak: number) => {
+  const updatePointsAndLevel async (userId: string, allAchievements: any[], userAchievements: any[]) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const points = (pomodoros * 50) + (tasks * 20) + (streak * 100);
-      const level = Math.floor(points / 500) + 1;
+ // Check for newly earned achievements
+       const earnedAchievements allAchievements.filter(a => a.earned);
+       const existingAchievementIds = new Set (userAchievements.map(a => a.achievement_id));
+ // Insert new achievements
+       for (const achievement of earnedAchievements) {
+        if (!existingAchievement Ids.has(achievement.id)) {
+          await supabase
+           .from('user_achievements')
+           .insert({
+           user_id: userId,
+           achievement_id: achievement.id
+         });
+     }
+  } 
+// Calculate total points from earned achievements
+const totalPoints earnedAchievements.reduce((sum, a) => sum + a.points, 0);
+const level = Math.floor(totalPoints / 500) + 1;
+// Update today's stats with current level and points
 
       const today = new Date().toISOString().split('T')[0];
       const { data: todayStats } = await supabase
         .from('user_stats')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('date', today)
         .maybeSingle();
 
       if (todayStats) {
         await supabase
           .from('user_stats')
-          .update({ points, level, streak })
+          .update({ points: totalPoints, level })
           .eq('id', todayStats.id);
       } else {
         await supabase
           .from('user_stats')
           .insert({
-            user_id: user.id,
+            user_id: userId,
             date: today,
-            points,
-            level,
-            streak
+            points: totalPoints,
+            level
+            
           });
       }
     } catch (error) {
@@ -306,12 +319,17 @@ const Achievements = () => {
     }
   };
 
-  const userLevel = {
-    current: Math.floor(stats.totalPomodoros / 10) + 1,
-    progress: (stats.totalPomodoros % 10) * 10,
-    pointsInLevel: stats.totalPomodoros * 50,
-    pointsForNext: (Math.floor(stats.totalPomodoros / 10) + 1) * 500,
-    title: stats.totalPomodoros > 50 ? "Productivity Master" : "Rising Star"
+ const earnedAchievements achievements.filter(a => a.earned);
+ const totalXP = earnedAchievements.reduce((sum, a) => sum + a.points, 0);
+ const currentLevel = Math.floor(totalXP / 500) + 1;
+ const xpInCurrentLevel = totalXP % 500;
+ const xpForNextLevel = 500;
+ const userLevel = {
+ current: currentLevel,
+ progress: (xpInCurrentLevel / xpForNextLevel) * 100,
+ pointsInLevel: totalXP,
+ pointsForNext: currentLevel * 500,
+ title: currentLevel >= 10? "Productivity Master": currentLevel >= 5? "Rising Star": "Beginner"
   };
 
   const badges = [
